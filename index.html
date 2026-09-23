@@ -418,6 +418,25 @@
   var MAX_LEN = 240;
   var NAME_KEY = 'fake-fact-counter:name';
 
+  // Basic profanity filter — blocks the fact or the name from being
+  // submitted if it contains one of these words (or an obvious extension
+  // of one, e.g. "shitty"). This is a UX nicety only: it runs in the
+  // visitor's browser and someone technical could bypass it, so the real
+  // enforcement is the Firestore security rule (see README.md).
+  var BANNED_WORDS = [
+    'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'piss',
+    'cock', 'pussy', 'whore', 'slut', 'nigger', 'nigga', 'fag', 'faggot',
+    'retard', 'rape', 'twat', 'wanker', 'slag', 'prick'
+  ];
+  function containsBannedWord(text) {
+    var lower = text.toLowerCase();
+    for (var i = 0; i < BANNED_WORDS.length; i++) {
+      var re = new RegExp('\\b' + BANNED_WORDS[i] + '\\w*', 'i');
+      if (re.test(lower)) return true;
+    }
+    return false;
+  }
+
   try {
     var savedName = localStorage.getItem(NAME_KEY);
     if (savedName) nameInput.value = savedName;
@@ -535,6 +554,12 @@
       return;
     }
     var name = nameInput.value.trim().slice(0, 40) || 'Anonymous';
+
+    if (containsBannedWord(text) || containsBannedWord(name)) {
+      statusLine.textContent = 'Keep it PG — that didn\'t pass the filter.';
+      statusLine.classList.add('error');
+      return;
+    }
 
     statusLine.classList.remove('error');
     statusLine.textContent = 'Adding…';
