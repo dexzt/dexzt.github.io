@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Andrew's Fake Fact Counter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F1E4;
+    --surface: #FFFFFF;
+    --surface-2: #EEE4CC;
+    --ink: #201C15;
+    --ink-soft: #6B6252;
+    --accent: #F2B705;
+    --accent-ink: #201C15;
+    --line: #DCCFAA;
+    --danger: #B5432B;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16130D;
+      --surface: #211C13;
+      --surface-2: #2A2417;
+      --ink: #F3ECDA;
+      --ink-soft: #AFA48A;
+      --accent: #F2B705;
+      --accent-ink: #16130D;
+      --line: #3B331F;
+      --danger: #E2734F;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16130D;
+    --surface: #211C13;
+    --surface-2: #2A2417;
+    --ink: #F3ECDA;
+    --ink-soft: #AFA48A;
+    --accent: #F2B705;
+    --accent-ink: #16130D;
+    --line: #3B331F;
+    --danger: #E2734F;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 28px 60px;
+  }
+
+  /* ---- header ---- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .brand b { color: var(--ink); }
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(242,183,5,0.6);
+    animation: pulse 2s infinite;
+  }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(242,183,5,0.55); }
+    70%  { box-shadow: 0 0 0 7px rgba(242,183,5,0); }
+    100% { box-shadow: 0 0 0 0 rgba(242,183,5,0); }
+  }
+
+  /* ---- hero ---- */
+  .hero {
+    text-align: center;
+    padding-block: 40px 30px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 18px;
+  }
+  .digits {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .digit {
+    font-family: "Bebas Neue", "Arial Narrow", sans-serif;
+    font-size: clamp(56px, 18vw, 108px);
+    line-height: 1;
+    width: clamp(42px, 13vw, 78px);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: inset 0 -3px 0 var(--line), 0 2px 0 var(--line);
+    position: relative;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+  }
+  .digit::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    height: 1px;
+    background: var(--line);
+    opacity: 0.9;
+  }
+  .digits.bump .digit { animation: flip 0.5s ease; }
+  @keyframes flip {
+    0%   { transform: rotateX(0deg); }
+    45%  { transform: rotateX(60deg); color: var(--accent); }
+    100% { transform: rotateX(0deg); }
+  }
+  @media (prefers-reduced-motion: reduce) { .digits.bump .digit { animation: none; } }
+  .hero-caption {
+    margin: 18px 0 0;
+    font-family: "Bebas Neue", "Arial Narrow", sans-serif;
+    letter-spacing: 0.06em;
+    font-size: clamp(18px, 4.4vw, 24px);
+    color: var(--ink-soft);
+  }
+  .hero-caption b { color: var(--ink); }
+
+  /* ---- add panel ---- */
+  .panel {
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 8px;
+  }
+  .panel-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 10px;
+  }
+  form { display: flex; flex-direction: column; gap: 10px; }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  input[type="text"], textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 12px;
+    line-height: 1.5;
+  }
+  input[type="text"] {
+    max-width: 260px;
+  }
+  textarea {
+    resize: vertical;
+    min-height: 64px;
+  }
+  input[type="text"]:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .panel-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .count-hint { font-size: 11px; color: var(--ink-soft); }
+  button.submit {
+    font-family: "Bebas Neue", "Arial Narrow", sans-serif;
+    letter-spacing: 0.06em;
+    font-size: 18px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+  button.submit:disabled { opacity: 0.55; cursor: default; }
+  button.submit:hover:not(:disabled) { filter: brightness(1.05); }
+  .status-line {
+    font-size: 12px;
+    min-height: 16px;
+    color: var(--ink-soft);
+  }
+  .status-line.error { color: var(--danger); }
+
+  /* ---- ledger ---- */
+  .ledger { margin-top: 40px; }
+  .ledger-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  li.entry {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    padding-block: 14px;
+    border-bottom: 1px solid var(--line);
+    align-items: start;
+  }
+  li.entry:first-child { padding-top: 0; }
+  .badge {
+    font-family: "Bebas Neue", "Arial Narrow", sans-serif;
+    font-size: 20px;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border-radius: 5px;
+    padding: 2px 8px;
+    min-width: 34px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .entry-body { min-width: 0; }
+  .entry-text {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    overflow-wrap: break-word;
+  }
+  .entry-meta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+  }
+  .entry-meta b { color: var(--ink-soft); font-weight: 700; }
+  .empty {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13px;
+    padding: 24px 0;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+  }
+  .setup-warning {
+    background: var(--surface);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .setup-warning code {
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  footer {
+    margin-top: 44px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div id="setup-warning" class="setup-warning" hidden>
+    This page isn't connected to a database yet. Open <code>index.html</code>, find the
+    <code>firebaseConfig</code> object near the bottom, and paste in the values from your
+    Firebase project (see <code>README.md</code> for step-by-step setup).
+  </div>
+
+  <div class="topbar">
+    <div class="brand">ANDREW'S <b>FAKE&nbsp;FACT&nbsp;COUNTER</b></div>
+    <div class="live"><span class="live-dot"></span> live for everyone</div>
+  </div>
+
+  <div class="hero">
+    <p class="eyebrow">Total fake facts logged</p>
+    <div class="digits" id="digits" aria-live="polite" aria-label="Fake fact count"></div>
+    <p class="hero-caption">and <b>counting</b>.</p>
+  </div>
+
+  <div class="panel">
+    <p class="panel-label">Log a fake fact</p>
+    <form id="fact-form">
+      <div class="field">
+        <label class="field-label" for="name-input">Your name</label>
+        <input
+          type="text"
+          id="name-input"
+          maxlength="40"
+          placeholder="Anonymous"
+          autocomplete="name"
+        />
+      </div>
+      <div class="field">
+        <label class="field-label" for="fact-input">The fake fact</label>
+        <textarea
+          id="fact-input"
+          maxlength="240"
+          placeholder="e.g. Goldfish have a three-second memory"
+        ></textarea>
+      </div>
+      <div class="panel-row">
+        <span class="count-hint" id="char-hint">240 characters left</span>
+        <button type="submit" class="submit" id="submit-btn">Add to the count</button>
+      </div>
+      <div class="status-line" id="status-line" role="status"></div>
+    </form>
+  </div>
+
+  <div class="ledger">
+    <div class="ledger-head">
+      <p class="eyebrow" style="margin:0;">The ledger</p>
+    </div>
+    <ul class="list" id="list"></ul>
+    <div class="empty" id="empty-state" hidden>No fake facts logged yet — be the first to add one above.</div>
+  </div>
+
+  <footer>Facts are shared live with everyone who opens this page.</footer>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import {
+    getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  // ---------------------------------------------------------------
+  // 1. Create a free Firebase project at https://console.firebase.google.com
+  // 2. Add a Web App to it, and enable Firestore Database
+  // 3. Paste the config object it gives you below, replacing this one.
+  //    (Full steps are in README.md)
+  // ---------------------------------------------------------------
+  const firebaseConfig = {
+	apiKey: "AIzaSyDA_r0WA7rmUn1tdHlq0DlpBDDRx_BSCmA",
+	authDomain: "andrewsfakefactcounter.firebaseapp.com",
+	projectId: "andrewsfakefactcounter",
+	storageBucket: "andrewsfakefactcounter.firebasestorage.app",
+	messagingSenderId: "603131968856",
+	appId: "1:603131968856:web:8f1f89d17540f0f5a1f92d",
+	measurementId: "G-ZET3W65CLE"
+  };
+
+  var digitsEl = document.getElementById('digits');
+  var listEl = document.getElementById('list');
+  var emptyEl = document.getElementById('empty-state');
+  var form = document.getElementById('fact-form');
+  var input = document.getElementById('fact-input');
+  var nameInput = document.getElementById('name-input');
+  var submitBtn = document.getElementById('submit-btn');
+  var statusLine = document.getElementById('status-line');
+  var charHint = document.getElementById('char-hint');
+  var setupWarning = document.getElementById('setup-warning');
+  var MAX_LEN = 240;
+  var NAME_KEY = 'fake-fact-counter:name';
+
+  try {
+    var savedName = localStorage.getItem(NAME_KEY);
+    if (savedName) nameInput.value = savedName;
+  } catch (e) { /* storage unavailable — fine, just start blank */ }
+
+  var lastCount = null;
+
+  function renderDigits(n) {
+    var str = String(n);
+    if (str.length < 3) str = str.padStart(3, '0');
+    digitsEl.innerHTML = '';
+    for (var i = 0; i < str.length; i++) {
+      var d = document.createElement('div');
+      d.className = 'digit';
+      d.textContent = str[i];
+      digitsEl.appendChild(d);
+    }
+    if (lastCount !== null && n !== lastCount) {
+      digitsEl.classList.remove('bump');
+      void digitsEl.offsetWidth;
+      digitsEl.classList.add('bump');
+    }
+    lastCount = n;
+  }
+
+  function timeAgo(ms) {
+    var diff = Date.now() - ms;
+    if (diff < 45000) return 'just now';
+    var mins = Math.round(diff / 60000);
+    if (mins < 60) return mins + 'm ago';
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    var days = Math.round(hrs / 24);
+    return days + 'd ago';
+  }
+
+  function escapeHtml(s) {
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function renderList(docs) {
+    var total = docs.length;
+    renderDigits(total);
+
+    if (total === 0) {
+      listEl.innerHTML = '';
+      emptyEl.hidden = false;
+      return;
+    }
+    emptyEl.hidden = true;
+
+    var html = '';
+    for (var i = 0; i < docs.length; i++) {
+      var data = docs[i].data() || {};
+      var reason = typeof data.reason === 'string' ? data.reason : '(no reason given)';
+      var createdAt = typeof data.createdAt === 'number' ? data.createdAt : Date.now();
+      var name = typeof data.name === 'string' && data.name ? data.name : 'Anonymous';
+      var num = total - i;
+      html += '<li class="entry">' +
+                '<span class="badge">#' + num + '</span>' +
+                '<div class="entry-body">' +
+                  '<div class="entry-text">' + escapeHtml(reason) + '</div>' +
+                  '<div class="entry-meta"><b>' + escapeHtml(name) + '</b> · ' + timeAgo(createdAt) + '</div>' +
+                '</div>' +
+              '</li>';
+    }
+    listEl.innerHTML = html;
+  }
+
+  renderDigits(0);
+
+  var dbReady = false;
+  var factsCol = null;
+
+  if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    setupWarning.hidden = false;
+    submitBtn.disabled = true;
+    statusLine.textContent = "Not connected — see the setup notice above.";
+    statusLine.classList.add('error');
+  } else {
+    try {
+      var app = initializeApp(firebaseConfig);
+      var db = getFirestore(app);
+      factsCol = collection(db, 'facts');
+      dbReady = true;
+
+      var factsQuery = query(factsCol, orderBy('createdAt', 'desc'), limit(500));
+      onSnapshot(factsQuery, function (snap) {
+        renderList(snap.docs);
+      }, function (err) {
+        statusLine.textContent = 'Live updates interrupted. Reload to reconnect.';
+        statusLine.classList.add('error');
+        console.error(err);
+      });
+    } catch (e) {
+      setupWarning.hidden = false;
+      submitBtn.disabled = true;
+      console.error(e);
+    }
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) {
+      statusLine.textContent = 'Type the fake fact first.';
+      statusLine.classList.add('error');
+      return;
+    }
+    if (!dbReady) {
+      statusLine.textContent = "Counter isn't connected yet — see the setup notice above.";
+      statusLine.classList.add('error');
+      return;
+    }
+    var name = nameInput.value.trim().slice(0, 40) || 'Anonymous';
+
+    statusLine.classList.remove('error');
+    statusLine.textContent = 'Adding…';
+    submitBtn.disabled = true;
+
+    addDoc(factsCol, {
+      reason: text.slice(0, MAX_LEN),
+      name: name,
+      createdAt: Date.now()
+    }).then(function () {
+      input.value = '';
+      charHint.textContent = MAX_LEN + ' characters left';
+      statusLine.textContent = 'Added to the count.';
+      submitBtn.disabled = false;
+      try { localStorage.setItem(NAME_KEY, name); } catch (e) { /* ignore */ }
+    }).catch(function (err) {
+      console.error(err);
+      statusLine.textContent = 'Could not add that fact. Try again.';
+      statusLine.classList.add('error');
+      submitBtn.disabled = false;
+    });
+  });
+
+  input.addEventListener('input', function () {
+    var left = MAX_LEN - input.value.length;
+    charHint.textContent = left + ' characters left';
+  });
+</script>
+</body>
+</html>
