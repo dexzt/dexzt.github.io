@@ -427,7 +427,7 @@
   // text in the page source on GitHub or in view-source — it still has
   // to run in the browser to work, so this deters casual reading, not
   // real reverse-engineering.
-  var BANNED_WORDS = atob('ZnVjayxzaGl0LGJpdGNoLGFzc2hvbGUsYmFzdGFyZCxjdW50LGRpY2sscGlzcyxjb2NrLHB1c3N5LHdob3JlLHNsdXQsbmlnZ2VyLG5pZ2dhLGZhZyxmYWdnb3QscmV0YXJkLHJhcGUsdHdhdCx3YW5rZXIsc2xhZyxwcmljayxnYXk==').split(',');
+  var BANNED_WORDS = atob('ZnVjayxzaGl0LGJpdGNoLGFzc2hvbGUsYmFzdGFyZCxjdW50LGRpY2sscGlzcyxjb2NrLHB1c3N5LHdob3JlLHNsdXQsbmlnZ2VyLG5pZ2dhLGZhZyxmYWdnb3QscmV0YXJkLHJhcGUsdHdhdCx3YW5rZXIsc2xhZyxwcmljayxnYXk=').split(',');
   function containsBannedWord(text) {
     var lower = text.toLowerCase();
     for (var i = 0; i < BANNED_WORDS.length; i++) {
