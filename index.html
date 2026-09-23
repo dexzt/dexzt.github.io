@@ -79,6 +79,13 @@
     color: var(--ink-soft);
   }
   .brand b { color: var(--ink); }
+  .tagline {
+    font-size: 11px;
+    font-style: italic;
+    color: var(--ink-soft);
+    text-align: center;
+    margin: 14px 0 0;
+  }
   .live {
     display: inline-flex;
     align-items: center;
@@ -328,6 +335,7 @@
     <div class="brand">ANDREW'S <b>FAKE&nbsp;FACT&nbsp;COUNTER</b></div>
     <div class="live"><span class="live-dot"></span> live for everyone</div>
   </div>
+  <p class="tagline">fake facts that came out of andrew's mouth</p>
 
   <div class="hero">
     <p class="eyebrow">Total fake facts logged</p>
@@ -388,13 +396,13 @@
   //    (Full steps are in README.md)
   // ---------------------------------------------------------------
   const firebaseConfig = {
-	apiKey: "AIzaSyDA_r0WA7rmUn1tdHlq0DlpBDDRx_BSCmA",
-	authDomain: "andrewsfakefactcounter.firebaseapp.com",
-	projectId: "andrewsfakefactcounter",
-	storageBucket: "andrewsfakefactcounter.firebasestorage.app",
-	messagingSenderId: "603131968856",
-	appId: "1:603131968856:web:8f1f89d17540f0f5a1f92d",
-	measurementId: "G-ZET3W65CLE"
+    apiKey: "AIzaSyDA_r0WA7rmUn1tdHlq0DlpBDDRx_BSCmA",
+    authDomain: "andrewsfakefactcounter.firebaseapp.com",
+    projectId: "andrewsfakefactcounter",
+    storageBucket: "andrewsfakefactcounter.firebasestorage.app",
+    messagingSenderId: "603131968856",
+    appId: "1:603131968856:web:8f1f89d17540f0f5a1f92d",
+    measurementId: "G-ZET3W65CLE"
   };
 
   var digitsEl = document.getElementById('digits');
