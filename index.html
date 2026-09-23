@@ -419,15 +419,15 @@
   var NAME_KEY = 'fake-fact-counter:name';
 
   // Basic profanity filter — blocks the fact or the name from being
-  // submitted if it contains one of these words (or an obvious extension
-  // of one, e.g. "shitty"). This is a UX nicety only: it runs in the
-  // visitor's browser and someone technical could bypass it, so the real
-  // enforcement is the Firestore security rule (see README.md).
-  var BANNED_WORDS = [
-    'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'piss',
-    'cock', 'pussy', 'whore', 'slut', 'nigger', 'nigga', 'fag', 'faggot',
-    'retard', 'rape', 'twat', 'wanker', 'slag', 'prick'
-  ];
+  // submitted if it contains one of a blocked list of words (or an
+  // obvious extension of one, e.g. "shitty"). This is a UX nicety only:
+  // it runs in the visitor's browser and someone technical could bypass
+  // it, so the real enforcement is the Firestore security rule (see
+  // README.md). The list is base64-encoded so it isn't sitting in plain
+  // text in the page source on GitHub or in view-source — it still has
+  // to run in the browser to work, so this deters casual reading, not
+  // real reverse-engineering.
+  var BANNED_WORDS = atob('ZnVjayxzaGl0LGJpdGNoLGFzc2hvbGUsYmFzdGFyZCxjdW50LGRpY2sscGlzcyxjb2NrLHB1c3N5LHdob3JlLHNsdXQsbmlnZ2VyLG5pZ2dhLGZhZyxmYWdnb3QscmV0YXJkLHJhcGUsdHdhdCx3YW5rZXIsc2xhZyxwcmljaw==').split(',');
   function containsBannedWord(text) {
     var lower = text.toLowerCase();
     for (var i = 0; i < BANNED_WORDS.length; i++) {
@@ -436,6 +436,16 @@
     }
     return false;
   }
+
+  // Purely for comedic effect — this is NOT a real IP address and nothing
+  // is actually logged anywhere. It's generated once per page load so it
+  // stays consistent if someone tries more than once.
+  var FAKE_IP = [
+    Math.floor(Math.random() * 223) + 1,
+    Math.floor(Math.random() * 256),
+    Math.floor(Math.random() * 256),
+    Math.floor(Math.random() * 256)
+  ].join('.');
 
   try {
     var savedName = localStorage.getItem(NAME_KEY);
@@ -556,7 +566,7 @@
     var name = nameInput.value.trim().slice(0, 40) || 'Anonymous';
 
     if (containsBannedWord(text) || containsBannedWord(name)) {
-      statusLine.textContent = 'Keep it PG — that didn\'t pass the filter.';
+      statusLine.textContent = 'Misuse of wordage. IP address ' + FAKE_IP + ' has been logged and stored.';
       statusLine.classList.add('error');
       return;
     }
