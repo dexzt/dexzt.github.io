@@ -18,6 +18,7 @@
     --accent-ink: #201C15;
     --line: #DCCFAA;
     --danger: #B5432B;
+    --on-danger: #FFFFFF;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -252,13 +253,19 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
     margin-bottom: 12px;
+  }
+  .ledger-sub {
+    font-size: 11px;
+    color: var(--ink-soft);
   }
   ul.list { list-style: none; margin: 0; padding: 0; }
   li.entry {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 12px;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
     padding-block: 14px;
     border-bottom: 1px solid var(--line);
     align-items: start;
@@ -289,6 +296,37 @@
     letter-spacing: 0.04em;
   }
   .entry-meta b { color: var(--ink-soft); font-weight: 700; }
+  .votes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .vote-btn {
+    font-family: "Space Mono", monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    border-radius: 5px;
+    padding: 3px 8px;
+    min-width: 48px;
+    text-align: center;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .vote-btn:hover { filter: brightness(0.96); }
+  .vote-btn.active-up {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+  }
+  .vote-btn.active-down {
+    background: var(--danger);
+    color: var(--on-danger);
+    border-color: var(--danger);
+  }
   .empty {
     text-align: center;
     color: var(--ink-soft);
@@ -375,6 +413,7 @@
   <div class="ledger">
     <div class="ledger-head">
       <p class="eyebrow" style="margin:0;">The ledger</p>
+      <span class="ledger-sub">sorted by most upvoted</span>
     </div>
     <ul class="list" id="list"></ul>
     <div class="empty" id="empty-state" hidden>No fake facts logged yet — be the first to add one above.</div>
@@ -386,7 +425,8 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
   import {
-    getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot
+    getFirestore, collection, addDoc, doc, setDoc, deleteDoc,
+    query, orderBy, limit, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   // ---------------------------------------------------------------
@@ -417,6 +457,23 @@
   var setupWarning = document.getElementById('setup-warning');
   var MAX_LEN = 240;
   var NAME_KEY = 'fake-fact-counter:name';
+  var VOTER_KEY = 'fake-fact-counter:voter';
+
+  // A per-browser id so votes can be toggled/changed, stored only locally.
+  // This is a casual convention, not real identity — nothing stops someone
+  // from clearing storage or using another browser to vote again.
+  var voterId = (function () {
+    try {
+      var id = localStorage.getItem(VOTER_KEY);
+      if (!id) {
+        id = 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(VOTER_KEY, id);
+      }
+      return id;
+    } catch (e) {
+      return 'v' + Math.random().toString(36).slice(2, 10);
+    }
+  })();
 
   // Basic profanity filter — blocks the fact or the name from being
   // submitted if it contains one of a blocked list of words (or an
@@ -427,7 +484,7 @@
   // text in the page source on GitHub or in view-source — it still has
   // to run in the browser to work, so this deters casual reading, not
   // real reverse-engineering.
-  var BANNED_WORDS = atob('ZnVjayxzaGl0LGJpdGNoLGFzc2hvbGUsYmFzdGFyZCxjdW50LGRpY2sscGlzcyxjb2NrLHB1c3N5LHdob3JlLHNsdXQsbmlnZ2VyLG5pZ2dhLGZhZyxmYWdnb3QscmV0YXJkLHJhcGUsdHdhdCx3YW5rZXIsc2xhZyxwcmljayxnYXk=').split(',');
+  var BANNED_WORDS = atob('ZnVjayxzaGl0LGJpdGNoLGFzc2hvbGUsYmFzdGFyZCxjdW50LGRpY2sscGlzcyxjb2NrLHB1c3N5LHdob3JlLHNsdXQsbmlnZ2VyLG5pZ2dhLGZhZyxmYWdnb3QscmV0YXJkLHJhcGUsdHdhdCx3YW5rZXIsc2xhZyxwcmljaw==').split(',');
   function containsBannedWord(text) {
     var lower = text.toLowerCase();
     for (var i = 0; i < BANNED_WORDS.length; i++) {
@@ -489,8 +546,38 @@
     return div.innerHTML;
   }
 
-  function renderList(docs) {
-    var total = docs.length;
+  // Votes are stored as one document per (fact, voter) pair — never as a
+  // shared incrementing counter, since concurrent read-modify-write
+  // increments aren't safe to do without transactions. The doc id embeds
+  // both ids, so casting a vote is just "set (or delete) my own document."
+  var latestFactDocs = [];
+  var latestVoteDocs = [];
+
+  function tallyVotes(voteDocs) {
+    var map = {};
+    for (var i = 0; i < voteDocs.length; i++) {
+      var d = voteDocs[i].data() || {};
+      if (!d.factId) continue;
+      if (!map[d.factId]) map[d.factId] = { up: 0, down: 0 };
+      if (d.value === 1) map[d.factId].up++;
+      else if (d.value === -1) map[d.factId].down++;
+    }
+    return map;
+  }
+
+  function myVote(factId) {
+    var id = factId + '_' + voterId;
+    for (var i = 0; i < latestVoteDocs.length; i++) {
+      if (latestVoteDocs[i].id === id) {
+        var d = latestVoteDocs[i].data() || {};
+        return d.value === 1 || d.value === -1 ? d.value : 0;
+      }
+    }
+    return 0;
+  }
+
+  function renderAll() {
+    var total = latestFactDocs.length;
     renderDigits(total);
 
     if (total === 0) {
@@ -500,28 +587,71 @@
     }
     emptyEl.hidden = true;
 
+    var tally = tallyVotes(latestVoteDocs);
+    var items = latestFactDocs.map(function (d) {
+      var data = d.data() || {};
+      var t = tally[d.id] || { up: 0, down: 0 };
+      return {
+        id: d.id,
+        reason: typeof data.reason === 'string' ? data.reason : '(no reason given)',
+        name: typeof data.name === 'string' && data.name ? data.name : 'Anonymous',
+        createdAt: typeof data.createdAt === 'number' ? data.createdAt : 0,
+        up: t.up,
+        down: t.down
+      };
+    });
+
+    items.sort(function (a, b) {
+      if (b.up !== a.up) return b.up - a.up;
+      return b.createdAt - a.createdAt;
+    });
+
     var html = '';
-    for (var i = 0; i < docs.length; i++) {
-      var data = docs[i].data() || {};
-      var reason = typeof data.reason === 'string' ? data.reason : '(no reason given)';
-      var createdAt = typeof data.createdAt === 'number' ? data.createdAt : Date.now();
-      var name = typeof data.name === 'string' && data.name ? data.name : 'Anonymous';
-      var num = total - i;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var mine = myVote(it.id);
       html += '<li class="entry">' +
-                '<span class="badge">#' + num + '</span>' +
+                '<span class="badge">#' + (i + 1) + '</span>' +
                 '<div class="entry-body">' +
-                  '<div class="entry-text">' + escapeHtml(reason) + '</div>' +
-                  '<div class="entry-meta"><b>' + escapeHtml(name) + '</b> · ' + timeAgo(createdAt) + '</div>' +
+                  '<div class="entry-text">' + escapeHtml(it.reason) + '</div>' +
+                  '<div class="entry-meta"><b>' + escapeHtml(it.name) + '</b> · ' + timeAgo(it.createdAt) + '</div>' +
+                '</div>' +
+                '<div class="votes">' +
+                  '<button type="button" class="vote-btn' + (mine === 1 ? ' active-up' : '') + '" data-fact="' + it.id + '" data-dir="up">&#9650; ' + it.up + '</button>' +
+                  '<button type="button" class="vote-btn' + (mine === -1 ? ' active-down' : '') + '" data-fact="' + it.id + '" data-dir="down">&#9660; ' + it.down + '</button>' +
                 '</div>' +
               '</li>';
     }
     listEl.innerHTML = html;
   }
 
+  function castVote(factId, value) {
+    if (!dbReady) return;
+    var current = myVote(factId);
+    var voteId = factId + '_' + voterId;
+    var ref = doc(db, 'votes', voteId);
+    var p = current === value ? deleteDoc(ref) : setDoc(ref, {
+      factId: factId,
+      voterId: voterId,
+      value: value,
+      updatedAt: Date.now()
+    });
+    p.catch(function (err) { console.error(err); });
+  }
+
+  listEl.addEventListener('click', function (e) {
+    var btn = e.target.closest ? e.target.closest('.vote-btn') : null;
+    if (!btn) return;
+    var factId = btn.getAttribute('data-fact');
+    var dir = btn.getAttribute('data-dir');
+    castVote(factId, dir === 'up' ? 1 : -1);
+  });
+
   renderDigits(0);
 
   var dbReady = false;
   var factsCol = null;
+  var db = null;
 
   if (firebaseConfig.apiKey === "YOUR_API_KEY") {
     setupWarning.hidden = false;
@@ -531,16 +661,25 @@
   } else {
     try {
       var app = initializeApp(firebaseConfig);
-      var db = getFirestore(app);
+      db = getFirestore(app);
       factsCol = collection(db, 'facts');
       dbReady = true;
 
       var factsQuery = query(factsCol, orderBy('createdAt', 'desc'), limit(500));
       onSnapshot(factsQuery, function (snap) {
-        renderList(snap.docs);
+        latestFactDocs = snap.docs;
+        renderAll();
       }, function (err) {
         statusLine.textContent = 'Live updates interrupted. Reload to reconnect.';
         statusLine.classList.add('error');
+        console.error(err);
+      });
+
+      var votesQuery = query(collection(db, 'votes'), limit(1000));
+      onSnapshot(votesQuery, function (snap) {
+        latestVoteDocs = snap.docs;
+        renderAll();
+      }, function (err) {
         console.error(err);
       });
     } catch (e) {
